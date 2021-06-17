@@ -1,0 +1,572 @@
+; Proyecto: Proyecto de programacion en ensamblador.
+; Archivo:  filtro.ens.
+;Jorge Amorós Anaya 120200
+;Javier Giralte Corrales 120028
+;
+; El archivo contiene cuatro subrutinas:
+;	-FILTROREC
+;	-FILTRO
+;	-FILTRAPIXEL.
+;	-COMPARA.
+; Contiene las macros LEA, PUSH ,POP y DBNZ.
+;
+;.........................................................MACROS
+
+      LEA:MACRO  (reg,ETIQ)
+          or     reg,r0,low(ETIQ)
+          or.u   reg,reg,high(ETIQ)
+          ENDMACRO
+
+     PUSH:MACRO  (reg)
+          subu   r30,r30,4
+          st     reg,r30,r0
+          ENDMACRO
+
+      POP:MACRO  (reg)
+          ld     reg,r30,r0
+          addu   r30,r30,4
+          ENDMACRO
+		  
+	  DBNZ:MACRO  (reg, ETIQ)
+          sub    reg, reg, 1
+          cmp    r4, reg, r0
+          bb0    eq, r4, ETIQ
+          ENDMACRO
+;......................................................... Datos para las pruebas	  
+		  org 1000
+Imagen1:
+	data 4,8
+	data 0x00000000,0x00000000,0x00000000,0x00000000
+	data 0x00000000,0x00000000,0x00000000,0x00000000
+
+MFiltro1:
+	data 1
+	data 0,0,0
+	data 0,1,0
+	data 0,0,0
+;.........................................................
+Imagen2:
+	data 4,8
+	data 0x44444444,0x44444444,0x44444444,0x44444444
+	data 0x44444444,0x44444444,0x44444444,0x44444444
+
+MFiltro2:
+	data 1
+	data 0,0,0
+	data 0,2,0
+	data 0,0,0
+;.........................................................
+Imagen3:
+	 data 4,8
+	data 0x44444444,0x44444444,0x44353433,0x44444444
+	data 0x44448844,0x44444444,0x44555453,0x44444444
+MFiltro3:
+	data 3
+	data 1,1,1
+	data 0,0,0
+	data 0,0,0
+;.........................................................
+Imagen33:
+	data 4,5
+	data 0x04030201,0x08080605,0x04040608
+	data 0x01060404,0x01010101
+MFiltro33:
+	data 2
+	data 0,0,0
+	data 0,1,0
+	data 0,0,0
+ImFIltrada33:
+	data 4,5
+	data 0x00000000,0x00000000,0x00000000
+	data 0x00000000,0x00000000	
+;.........................................................
+Imagen4:
+	data 4,8
+	data 0x01010101,0x01010101,0x04040404,0x04040404
+	data 0x06060606,0x06060606,0x01010101,0x01010101
+MFiltro4:
+	data 2
+	data 0,0,0
+	data 0,1,0
+	data 0,0,0
+	
+ImFIltrada4:
+	data 4,8
+	data 0x00000000,0x00000000,0x00000000,0x00000000
+	data 0x00000000,0x00000000,0x00000000,0x00000000
+;.........................................................
+Imagen5:
+	data 4,8
+	data 0x78563412,0xFBFCFDFE,0x78563412,0xFBFCFDFE
+	data 0x78563412,0xFBFCFDFE,0x78563412,0xFBFCFDFE
+
+MFiltro5:
+	data 2
+	data 0,0,0
+	data 0,1,0
+	data 0,0,0
+
+ImFIltrada5:
+	data 4,8
+	data 0x00000000,0x00000000,0x00000000,0x00000000
+	data 0x00000000,0x00000000,0x00000000,0x00000000
+;.........................................................
+Imagen55:
+	data 4,8
+	data 0x00000000,0x00000000,0x00000000,0x00000000
+	data 0x00000000,0x00000000,0x00000000,0x00000000
+
+MFiltro55:
+	data 2
+	data 0,0,0
+	data 0,1,0
+	data 0,0,0
+
+ImFIltrada55:
+	data 4,8
+	data 0x00000000,0x00000000,0x00000000,0x00000000
+	data 0x00000000,0x00000000,0x00000000,0x00000000
+;.........................................................
+Imagen3_A:
+	data 4,8
+	data 0x01010101,0x01010101,0x01010101,0x01010101
+	data 0x01010101,0x01010101,0x01010101,0x01010101
+Imagen3_B:
+	data 4,8
+	data 0x02020202,0x02020202,0x02020202,0x02020202
+	data 0x02020202,0x02020202,0x02020202,0x02020202
+;.........................................................
+Imagen8:
+	data 4,8
+	data 0x00FF00FF,0xFF00FF00,0x00FF00FF,0xFF00FF00
+	data 0x00FF00FF,0xFF00FF00,0x00FF00FF,0xFF00FF00
+	
+MFiltro8:
+	data 8
+	data 1,1,1
+	data 1,0,1
+	data 1,1,1
+;.........................................................
+Imagen9:
+	data 4,8
+	data 0xFF0000FF,0xFF0000FF,0xFF0000FF,0xFF0000FF
+	data 0xFF0000FF,0xFF0000FF,0xFF0000FF,0xFF0000FF
+	
+MFiltro9:
+	data 8
+	data 1,1,1
+	data 1,0,1
+	data 1,1,1
+	
+;.........................................................PRUEBAS
+org 2000
+; Caso 1.Llamada a FILTRAPIXEL.Imagen nula, filtro unitario.
+
+PPAL1:
+	LEA   (r30,60000)
+	LEA  (r10,Imagen1)
+	LEA  (r13,MFiltro1)
+	addu r11,r0,3 ;i
+	addu r12,r0,5 ;j
+	PUSH (r13)	  ; Resultados:
+	PUSH (r12)	  ; r29 = 0x00.
+	PUSH (r11)
+	PUSH (r10)
+	bsr  FILTRAPIXEL
+	POP  (r10)
+	POP  (r11)
+	POP  (r12)
+	POP  (r13)
+	stop
+; Caso 2.Llamada a FILTRAPIXEL.Se realiza el filtrado de un pixel en una imagen no nula con un filtro que duplica el
+;valor del elemento sobre el que se aplica.
+
+
+PPAL2:
+	LEA   (r30,60000)
+	LEA  (r10,Imagen2)
+	LEA  (r13,MFiltro2)
+	addu r11,r0,3 ;i
+	addu r12,r0,5 ;j
+	PUSH (r13)	  ; Resultados:
+	PUSH (r12)	  ; r29 = 0x88.
+	PUSH (r11)
+	PUSH (r10)
+	bsr  FILTRAPIXEL
+	POP  (r10)
+	POP  (r11)
+	POP  (r12)
+	POP  (r13)
+	stop
+;Caso 3.LLamada a filtrapixelSe realiza el filtrado de un p´ixel en una imagen no nula con un filtro que obtiene la
+;media de los tres elementos situados en la fila anterior.
+PPAL3:
+	LEA   (r30,60000)
+	LEA  (r10,Imagen3)
+	LEA  (r13,MFiltro3)
+	addu r11,r0,2 ;i
+	addu r12,r0,1 ;j
+	PUSH (r13)	  ; Resultados:
+	PUSH (r12)	  ; r29 = 0x34.
+	PUSH (r11)
+	PUSH (r10)
+	bsr  FILTRAPIXEL
+	stop
+;Caso mio.LLamada a filtro.Llama a FILTRO pasandole una imagen  de 3x3 elementos y un filtro unitario que
+;devuelve la misma imagen recibida.Menos el valor de en medio que lo devuelve dividido entre 2.
+PPAL4:
+	LEA  (r30,60000)
+	LEA  (r10,Imagen33)
+	LEA  (r13,MFiltro33)
+	LEA  (r27,ImFIltrada33)
+	PUSH (r13)
+	PUSH (r27)
+	PUSH (r10)
+	bsr  FILTRO
+	stop
+
+; Caso mio.Llamada a FILTRO.
+
+PPAL5:
+	LEA  (r30,60000)
+	LEA  (r10,Imagen4)
+	LEA  (r13,MFiltro4)
+	LEA  (r27,ImFIltrada4)
+	PUSH (r13)
+	PUSH (r27)
+	PUSH (r10)
+	bsr  FILTRO
+	stop
+;Caso 4 FILTRO Con imagen a 0.
+	PPAL55:
+	LEA  (r30,60000)
+	LEA  (r10,Imagen55)
+	LEA  (r13,MFiltro55)
+	LEA  (r27,ImFIltrada55)
+	PUSH (r13)
+	PUSH (r27)
+	PUSH (r10)
+	bsr  FILTRO
+	stop
+;Caso 5.Llamada
+PPAL6:
+	LEA  (r30,60000)
+	LEA  (r10,Imagen5)
+	LEA  (r13,MFiltro5)
+	LEA  (r27,ImFIltrada5)
+	PUSH (r13)
+	PUSH (r27)
+	PUSH (r10)
+	bsr  FILTRO
+	stop
+	
+
+; Caso 6.Llamada a COMPARA.
+PPAL7:
+	LEA   (r30,60000)
+	LEA  (r10,Imagen3_A)
+	LEA  (r27,Imagen3_B)
+	PUSH (r27)
+	PUSH (r10)
+	bsr  COMPARA
+	POP  (r10)
+	POP  (r27)
+	stop
+;Caso 7.LLamada A FILTROREC
+PPAL8:  LEA  (r30,60000)
+		LEA  (r10,Imagen8)
+		LEA  (r13,MFiltro8)
+		addu r24,r0,2
+		or   r9,r0,r0
+		PUSH (r9)	; Resultados:
+		PUSH (r24)	; r29 = 0x09
+		PUSH (r13)	; 
+		PUSH (r10)	;	
+		bsr  FILTROREC	
+		POP(r10)
+		POP(r13)
+		POP(r24)
+		POP(r9)	
+		stop
+;Caso8 Del enunciado
+PPAL9: 
+		LEA  (r30,60000)
+		LEA  (r10,Imagen9)
+		LEA  (r13,MFiltro9)
+		addu r24,r0,0
+		or   r9,r0,r0
+		PUSH (r9)	; Resultados:
+		PUSH (r24)	; r29 = 0x14
+		PUSH (r13)	; 
+		PUSH (r10)	;	
+		bsr  FILTROREC	
+		POP(r10)
+		POP(r13)
+		POP(r24)
+		POP(r9)	
+		stop
+
+;------------------------------------------->Subrutina COMPARA
+;---->Descripcion- Compara dos imagenes pasadas por direccion y guarda en r29 el número de píxeles diferentes que hay entre las dos.
+; >>Parametros:
+;	>Imagen1(r10): contiene la primera imagen.
+;	>Imagen2(r27): contiene la segunda imagen.
+; 	>Retorno: (r29)
+;		
+		  
+COMPARA:     PUSH(r1)          ; Guardamos la direccion de retorno
+			 PUSH(r31)         ; Se guarda el puntero del marco de pila 
+			 or r31,r30,r0;    ; Creacion de un marco de pila.
+			 ld r25,r31,8      ; r25 contiene la direccion donde se encuentra la primera imagen.
+			 ld r26,r31,12     ; r26 contiene la direccion donde se encuentra la segunda imagen.
+			 ld r24,r25,0      ; M--->(Numero de filas)
+			 ld r23,r25,4      ; N--->(Numero de columnas ) M Y N iguales en ambas.
+			 mulu r22,r24,r23  ; MxN Numero de elementos
+			 xor r17,r17,r17   ; r17 a 0 por si habia algo anteriormente.			 
+			 addu r17,r0,8     ; Desplazamiento por pixel.A partir de 8 para saltar M y N.
+			 xor r29,r29,r29   ;r29 a 0 por si habia algo anteriormente.
+Comparar:	 ld.bu r19,r25,r17 ;Cargamos el primer byte de la primera imagen.
+		     ld.bu r18,r26,r17 ;Cargamos el primer byte de la segunda imagen.
+			 cmp r3,r19,r18    ;1 si iguales y 0 si diferentes.Si son iguales saltamos a Nada,
+			 bb1 eq,r3,Nada	   ; Incrementamos el desplazamiento y restamos 1 a MXN
+			 addu r29,r29,1	   ;Si son diferente, sumamos 1 a r29.Y continuamos a Nada.
+Nada:        addu r17,r17,1    ; Incrementamos el desplazamiento
+			 DBNZ(r22, Comparar)
+fin:         or r30,r31,r0      ;Restauramos el puntero de pila.
+			 POP  (r31)		   ; Recupera el puntero de marco de pila.
+		     POP  (r1)		   ; Recupera la direccion de retorno.
+		     jmp  (r1)		   ;Volvemos al LLamante
+;------------------------------------------->Subrutina FILTRAPIXEL
+;---->Descripcion: Esta rutina aplica el filtrado definida al pixel seleccionado.
+; >>Parametros:
+;	>Imagen(r10): M,N y a continuacion el resto de elementos.
+;	>i(r11): Es el numero de fila del pixel de la imagen.
+;	>j(r12): Es el numero de columna del pixel de la imagen. Suponemos que tanto i como j son valores VÁLIDOS.
+;	>MFiltro(r13): constante K y los elementos del filtro.
+;   >Valor de retorno(r29): ValorPixel.
+			
+FILTRAPIXEL:  PUSH (r1)		        ; Se guarda la dirección de retorno,
+		      PUSH (r31)		    ; Se guarda el puntero de marco de pila,
+		      or   r31,r30,r0		; Creamos el marco de pila.		
+			  subu r30,r30,4
+			  st   r0,r30,0
+			  ld   r10,r31, 8		; r10 contiene la Imagen.
+			  ld   r11,r31, 12	    ; r11 contiene la i.
+			  ld   r12,r31, 16	    ; r12 contiene la j.
+			  ld   r13,r31, 20	    ; r13 contiene el MFiltro.	
+			  ld   r18,r13,r0		; r18 Contiene K
+			  addu r14,r11,r0       ; i
+			  subu r14,r14,1        ; i-1
+			  ld   r16,r10,4        ;N O numero de columnas
+			  mulu r14,r16,r14      ; (i-1)*N
+			  addu  r17,r12,r0      ;j
+			  subu r17,r17,1		;j-1
+			  addu r5,r14,r17		;(i-1)*N +(j-1)
+			  or r15,r0,r0
+			  addu r15,r0,8
+			  addu r15,r15,r5		;Puntero 	(i-1)*N+(j-1) + 8 (M y N)
+			  subu r16,r16,3 		;M-3 Para efectuar mas tarde el salto de fila.
+			  xor r2,r2,r2      	;
+			  addu r2,r0,4			; Desplazamiento de Mfiltro.Empezamos saltando K.
+			  xor r21,r21,r21		; ACC a 0
+			  xor r6,r6,r6			; r6 es un contador de columnas inicializado a 3.
+			  addu r6,r0,3
+			  xor r7,r7,r7		
+			  addu r7,r7,9			;r7 Contador inicializado a 9.Puesto que hay que multiplicar 9 y sumar 9 veces Al ser dos matrices de 3x3
+		 
+Filtra: 	ld.bu r3,r10,r15 		;r3 Cargamos el primer byte de la imagen en la posicion dade x el desplazamiento.
+			ld   r4,r13,r2			;r4 puntero a primera posicion de Mfiltro.Palabras enteras.
+			mulu r4,r4,r3
+			ld   r21,r30,0
+			addu r21,r21,r4 		; En r21 tenemos el ACC.Donde vamos almacenado la suma de las multiplicaciones.
+			st r21,r30,0
+			addu r15,r15,1			; De byte en byte
+			addu r2,r2,4			; De palabra en palabra
+			DBNZ(r6,No_salto)		; Decrementamos en 1 nuestro contador de columnas
+									; Mientras no llegue a 0, saltamos, decrementamos nuestro contador total de elementos y volvemos a filtrar.
+									;Cuando lleguemos a 0, volvemos a poner r6 a 3.
+			xor r6,r6,r6 			;dejamos el contador de columnas a 3.
+			addu r6,r0,3
+			addu r15,r15,r16		;Incrementamos de fila,Desplazamiento + (N-3).
+		
+		
+No_salto:    DBNZ(r7,Filtra)	;Mientras r7 no sea 0 significa que no hemos acabado de multiplicar y acumular.R7 empieza en 9, pues se acumula 9 veces.
+			 ld r21,r30,0
+			 divs r21,r21,r18 	;Dividimos lo multiplicado entre K.
+			 cmp r28,r21,r0	    ;Comparamos el pixel filtrado con 0.Si es menor que 0 se deja en 0, si no salta.
+			 bb0 lt,r28,Salto
+			 xor r21,r21,r21	;La dejamos a 0 si es menor que este.
+Salto:		 cmp r28,r21,255   	;Comparamos el pixel filtrado con 255.Si es mayor o igual a 0 saltamos a fin y dejamos en r29 el valor del pixel filtrado
+			 bb0  gt,r28,Fin	;Y si es menor que 0, dejamos 0.
+			 or r21,r0,255
+Fin:		 or r29,r21,r21
+			 or   r30,r31,r0	; Restaura el puntero de pila.
+			 POP  (r31)		    ; Recupera el puntero de marco de pila.
+			 POP  (r1)		    ; Recupera la direccion de retorno.
+			 jmp  (r1)		    ; Volvemos al llamante.
+
+
+;------------------------------------------->FILTRO
+;---->Descripción : Se le pasa Imagen, ImFiltrada, MFiltro y filtra la imagen dejandola en ImFiltrada.
+;>>Parametros
+;	>r(10) Direccion de la imagen
+;	>r(27) Direccion donde guardamos la imagen filtrada.
+;	>r(13) Direccion de la matriz Mfiltro.
+
+FILTRO:  PUSH(r1)
+		 PUSH(r31)
+		 or r31,r30,r30
+		 ld r10,r31,8 			;r10 contiene la direccion de la imagen
+		 ld r27,r31,12			;r27 contiene la direccion donde vamos a guardar la imagen filtrada.
+		 ld r13,r31,16			;r13  contiene la direccion de la matriz MFiltro.
+		 ld r20,r10,r0			;Contiene M.
+		 ld r21,r10,4		    ;Contiene N
+		 or r22,r21,r21
+		 st r20,r27,r0			;Copiamos M en en imagen filtrada	
+		 st r21,r27,4			;Copiamos N en la imagen filtrada		
+		 subu r20,r20,1			;M-1
+		 subu r21,r21,1			;N-1(desde 0 hasta N-1 es el numero de pixeles en la fila)
+		 xor r14,r14,r14		;Contador para la fila donde estamos
+		 xor r16,r16,r16		
+		 xor r15,r15,r15		;Contador para la columna actual.Cuando no estamos en la primera o ultima fila, donde cargo directamente el numero de columnas para llamar a DBNZ.
+		 addu r16,r0,8			;Desplazamiento
+		 
+fila_siguiente:		 cmp r3,r14,r0					; si estamos en la primera fila,la copiamos en la matriz de filtro.
+					 bb0 ne,r3,Copiar_fila			;
+					 cmp r4,r14,r20					;Si la fila actual es M-1 La copiamos.
+					 bb1 eq,r4,Copiar_fila
+					 ld.bu r5,r10,r16				;Copiamos siempre el primer pixel de las filas que no sean primera o ultima.
+					 st.b  r5,r27,r16
+					 addu r16,r16,1					;aumento el desplazamiento
+					 addu r15,r15,1					;Aumento la posicion de la columna.
+					 cmp  r3,r15,r21				;Comparamos la posicion actual en la columnas( ya incrementada) con N-1 para ver si es el ultimo elemento de la fila.
+					 bb0  ne,r3,Copiar_ultimo		;si son iguales copiamos ese pixel.
+Filtrar:		PUSH(r16)	;Salvamos el desplazamiento,Ya que lo tocamos en FiltraPixel y no queremos perderlo.
+				PUSH(r21)	;Salvamos N-1, por lo anterior
+				PUSH(r20)	;Salvamos M-1,por lo anterior
+				PUSH(r27)	;Salvamos la direccion de guardado de la imagen filtrada.Aqui no seria necesario ya que no lo toco en filtrapixel.La guardo por si acaso.
+				PUSH(r13)	;Paso de parametros: (Mfiltro,j,i,Imagen)
+				PUSH(r15)	;j
+				PUSH(r14)	;i
+				PUSH(r10)   ;imagen
+				bsr FILTRAPIXEL
+				POP(r10)
+				POP(r14)
+				POP(r15)
+				POP(r13)
+				POP(r27)
+				POP(r20)
+				POP(r21)		   ;Tendriamos el valor del pixel filtrado en r29.Luego lo copiamos.Al haber salvado el desplazamiento, nos lo copia donde queremos.		
+				POP(r16)
+				st.b r29,r27,r16	;Guardamos el byte filtrado en la misma posicion donde se encuentra en la matriz original,en el espacio de memoria de la imagen filtrada.
+				addu r16,r16,1		;Incrementamos desplazamiento.		
+				addu r15,r15,1		;aumentamos la posicion de la columna.
+				xor  r3,r3,r3
+				cmp r3,r15,r21 	    ;Comparamos la columna actual con N-1 columnas.
+				bb1  lt,r3,Filtrar  ;Mientras la columna actual sea menor que N-1 volvemos a filtar, y si no seguimos y copiamos el ultimo. 
+Copiar_ultimo:	ld.bu r5,r10,r16    ;Copiamos el ultimo pixel de la fila y pasamos a la siguiente.
+				st.b  r5,r27,r16
+				addu  r16,r16,1
+				addu  r14,r14,1
+				xor    r15,r15,r15		;Columnas a 0 otra vez.
+				br    fila_siguiente
+				 
+Copiar_fila: ld.bu r5,r10,r16
+			 st.b  r5,r27,r16 		;Almacenamos el primer pixel en la misma posicion
+			 addu  r16,r16,1
+			 DBNZ  (r22,Copiar_fila)
+			 or    r22,r21,r21 		;Despues de hacer el DBNZ, r22 se queda a 0 y tenemos que restaurarlo.Para cuando venga la ultima fila.
+			 addu  r22,r22,1	
+			 cmp   r3,r14,r20		;Si la posicion de la fila coincide con M-1 acabamos.
+			 bb1   eq,r3,fin_filtro
+			 addu  r14,r14,1		;Incrementamos la fila donde estamos.
+			 br    fila_siguiente	;Volvemos a la rutina fila_siguiente.
+			 
+fin_filtro: or 	 r30,r31,r0  		; Restaura el puntero de pila.
+			POP  (r31)				; Recupera el puntero de marco de pila.
+			POP  (r1)				; Recupera la direccion de retorno.
+			jmp  (r1)				; Volvemos al Llamante.
+			 
+;------------------------------------------->FILTROREC 
+; ---->Descripcion: Esta rutina realiza el filtrado recursivo de una imagen.
+; >>Parametros:
+;	>Imagen(r10): nfilas(M), ncolumnas(N) y los elementos de la imagen.
+;	>MFiltro(r13): constante K y los elementos del filtro.
+;	>NCambios(r24): minimo numero de pixeles diferentes entre la imagen original y la filtrada.
+;	>NPasadas(r9): numero de pasadas ya realizadas del filtro.
+;   >Valor de retorno(r29): NPasadas.	
+
+
+FILTROREC: PUSH(r1)
+		   PUSH(r31)
+		   or r31,r30,r0
+		   ld r10,r31,8			;r10 contiene la imagen
+		   ld r13,r31,12		;r13 contiene Mfiltro
+		   ld r24,r31,16		;r24 contiene Ncambios
+		   ld r9,r31,20  		;r9 contiene NPasadas
+		   ld r14,r10,r0		;M
+		   ld r15,r10,4			;N
+		   mulu r15,r15,r14		;MxN
+		   mask r3,r15,3
+		   cmp r4,r3,0      	 ;Si en r3 nos deja un 0 significa que MxN es multipo de 4 y por tanto solo tendremos 
+		   bb1 eq,r4,Sumar		 ;que sumarle 8 para obtener el espacio que queremos asignar a la pila para guardar ImFiltrada.
+		   divu r15,r15,4
+		   addu r15,r15,1
+		   mak r20,r15,0<2>		;MxN que no es multiplo de 4 ajustado por exceso a multiplo de 4.
+Sumar: 	   addu r20,r15,8  	    ;Espacio reservado ajustado por exceso a un multiplo de 4. +8 para M y N.
+		   subu r30,r30,r20
+		   addu r27,r30,r0  	; En r27 tenemos la matriz que se va a filtrar.Direccion de la imagen filtrada proveniente de Filtro.	   
+		   PUSH(r9)	    	; Salvo nPasadas, aunque este registro solo lo uso para npasadas.Lo guardo por si acaso.
+		   PUSH(r13)		;Paso Mfiltro
+		   PUSH(r27)		;Paso ImFiltrada
+		   PUSH(r10)		;Paso Imagen
+		   bsr FILTRO
+		   POP(r10)
+		   POP(r27)
+		   POP(r13) 
+		   POP(r9)
+		   addu r9,r9,1		;Incrementamos NPasadas en 1.
+		   addu r29,r9,r0	;Le pasamos a r29 el contenido de Npasadas.
+		   cmp r3,r9,20		;Vemos si NPasadas es mayor que 20.Mientras no lo sea Comparamos la original con la filtrada.
+		   bb1 ge,r3,FIN   
+		   PUSH(r24)  		 ;Ncambios lo tocamos en compara, asi que lo salvamos para no perderlo.
+		   PUSH(r27)
+		   PUSH(r10)
+		   bsr COMPARA   	; Llamamos a compara, no hago  un push de r9 ni de r24 para salvar Npasadas y ncambios al no tocar esos registros en compara y este no llamar a otras rutinas.
+		   POP(r10)
+		   POP(r27)
+		   POP(r24)
+		   cmp r3,r29,r24	;Comparamos el numero de cambios detectados en Compara con Ncambios,si cambios en compara < Ncambios se acaba el proceso recursivo.
+		   addu r29,r0,r9	; Hay que guardar, justo despues de comparar en r29 el numero de npasadas sustituyendo a lo que Compara nos ha dejado en r29.
+		   bb1 lt,r3,FIN	   
+FILTROREC2: PUSH(r9)
+			PUSH(r24)
+			PUSH(r13)
+			PUSH(r27)
+			bsr FILTROREC
+			POP(r27)
+			POP(r13)
+			POP(r24)
+			POP(r9)
+FIN:  		ld r10,r31,8	;Cargamos la direccion de la imagen original  en el registro r10 otra vez.Cargamos M y N y copiamos la imFiltrada en donde se encuentra a imagen original.
+			ld r7,r10,r0
+			ld r8,r10,4
+			mulu r8,r8,r7	;MXN contador
+			xor r6,r6,r6
+			addu r6,r0,8
+			
+Copiar:		ld.bu r5,r27,r6
+			st.b r5,r10,r6
+			addu r6,r6,1
+			DBNZ( r8, Copiar);Copiamos byte a byte hasta que agotamos el contador de MxN y acabamos el programa.
+			or   r30,r31,r0	; Restaura el puntero de pila.
+			POP  (r31)		; Recupera el puntero de marco de pila.
+			POP  (r1)		; Recupera la direccion de retorno.
+			jmp  (r1)		; Vuelve al llamante.
+		   
+		 
+
+			 
+		 
+		 
+		 
